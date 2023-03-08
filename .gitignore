@@ -6,3 +6,4 @@ dist/
 pointnet2.egg-info/
 experiment/
 .idea
+dataset
