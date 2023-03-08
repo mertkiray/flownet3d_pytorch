@@ -254,7 +254,7 @@ def main():
         net = FlowNet3D(args).cuda()
         net.apply(weights_init)
         if args.eval:
-            if args.model_path is '':
+            if args.model_path == '':
                 model_path = 'checkpoints' + '/' + args.exp_name + '/models/model.best.t7'
             else:
                 model_path = args.model_path
