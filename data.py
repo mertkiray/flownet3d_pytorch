@@ -217,38 +217,41 @@ class SceneflowDataset(Dataset):
         pos1 -= pos1_center
         pos2 -= pos1_center
 
-        if random.random() <= 0.5:
-            return pos1, pos2, color1, color2, flow, mask1
+        if self.partition == 'train':
+            if random.random() <= 0.5:
+                return pos1, pos2, color1, color2, flow, mask1
+            else:
+                # The augmentation
+                # select 2 random points
+                idx_knn = np.random.choice(self.npoints, 5, replace=False)
+                # create open3d kdtree
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(pos1)
+                kdtree = o3d.geometry.KDTreeFlann(pcd)
+                # find the nearest neighbor of the 2 random points
+                # max flow min flow
+                max_flow_x = np.max(flow[:, 0])
+                min_flow_x = np.min(flow[:, 0])
+                max_flow_y = np.max(flow[:, 1])
+                min_flow_y = np.min(flow[:, 1])
+                max_flow_z = np.max(flow[:, 2])
+                min_flow_z = np.min(flow[:, 2])
+                for i in range(5):
+                    [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 2.5)
+                    idx = np.array(idx)
+                    # create random x, y, z flows between min and max
+                    flow_x = np.random.uniform(min_flow_x, max_flow_x, idx.shape[0])
+                    flow_y = np.random.uniform(min_flow_y, max_flow_y, idx.shape[0])
+                    flow_z = np.random.uniform(min_flow_z, max_flow_z, idx.shape[0])
+                    flow_idx_augmented = np.zeros((idx.shape[0], 3))
+                    flow_idx_augmented[:, 0] = flow_x
+                    flow_idx_augmented[:, 1] = flow_y
+                    flow_idx_augmented[:, 2] = flow_z
+                    flow[idx[0:], :] = flow_idx_augmented
+                pos2 = pos1 + flow
+                color2 = color1
+                return pos1, pos2, color1, color2, flow, mask1
         else:
-            # The augmentation
-            # select 2 random points
-            idx_knn = np.random.choice(self.npoints, 5, replace=False)
-            # create open3d kdtree
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(pos1)
-            kdtree = o3d.geometry.KDTreeFlann(pcd)
-            # find the nearest neighbor of the 2 random points
-            # max flow min flow
-            max_flow_x = np.max(flow[:, 0])
-            min_flow_x = np.min(flow[:, 0])
-            max_flow_y = np.max(flow[:, 1])
-            min_flow_y = np.min(flow[:, 1])
-            max_flow_z = np.max(flow[:, 2])
-            min_flow_z = np.min(flow[:, 2])
-            for i in range(5):
-                [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 2.5)
-                idx = np.array(idx)
-                # create random x, y, z flows between min and max
-                flow_x = np.random.uniform(min_flow_x, max_flow_x, idx.shape[0])
-                flow_y = np.random.uniform(min_flow_y, max_flow_y, idx.shape[0])
-                flow_z = np.random.uniform(min_flow_z, max_flow_z, idx.shape[0])
-                flow_idx_augmented = np.zeros((idx.shape[0], 3))
-                flow_idx_augmented[:, 0] = flow_x
-                flow_idx_augmented[:, 1] = flow_y
-                flow_idx_augmented[:, 2] = flow_z
-                flow[idx[0:], :] = flow_idx_augmented
-            pos2 = pos1 + flow
-            color2 = color1
             return pos1, pos2, color1, color2, flow, mask1
 
     def __len__(self):
