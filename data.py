@@ -160,7 +160,7 @@ class ModelNet40(Dataset):
 
 
 class SceneflowDataset(Dataset):
-    def __init__(self, npoints=2048, root='data_preprocessing/data_processed_maxcut_35_both_mask_20k_2k', partition='train'):
+    def __init__(self, npoints=2048, root='data_preprocessing/data_processed_maxcut_35_both_mask_20k_2k', partition='train', flow_aug=False, use_color=False):
         self.npoints = npoints
         self.partition = partition
         self.root = root
@@ -170,6 +170,8 @@ class SceneflowDataset(Dataset):
             self.datapath = glob.glob(os.path.join(self.root, 'TEST*.npz'))
         self.cache = {}
         self.cache_size = 30000
+        self.flow_aug = flow_aug
+        self.use_color = use_color
 
         ###### deal with one bad datapoint with nan value
         self.datapath = [d for d in self.datapath if 'TRAIN_C_0140_left_0006-0' not in d]
@@ -213,11 +215,15 @@ class SceneflowDataset(Dataset):
             flow = flow[:self.npoints, :]
             mask1 = mask1[:self.npoints]
 
+        if not self.use_color:
+            color1 = np.zeros_like(color1)
+            color2 = np.zeros_like(color2)
+
         pos1_center = np.mean(pos1, 0)
         pos1 -= pos1_center
         pos2 -= pos1_center
 
-        if self.partition == 'train':
+        if self.partition == 'train' and self.flow_aug:
             if random.random() <= 0.5:
                 return pos1, pos2, color1, color2, flow, mask1
             else:
