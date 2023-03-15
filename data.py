@@ -243,7 +243,7 @@ class SceneflowDataset(Dataset):
                 max_flow_z = np.max(flow[:, 2])
                 min_flow_z = np.min(flow[:, 2])
                 for i in range(5):
-                    [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 2.5)
+                    [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 0.5)
                     idx = np.array(idx)
                     # create random x, y, z flows between min and max
                     flow_x = np.random.uniform(min_flow_x, max_flow_x, idx.shape[0])
