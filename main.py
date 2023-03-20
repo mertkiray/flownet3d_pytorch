@@ -116,7 +116,10 @@ def train_one_epoch(args, net, train_loader, opt):
         batch_size = pc1.size(0)
         opt.zero_grad()
         num_examples += batch_size
-        flow_pred = net(pc1, pc2, color1, color2)
+        if args.use_color:
+            flow_pred = net(pc1, pc2, color1, color2)
+        else:
+            flow_pred = net(pc1, pc2, None, None)
         loss = torch.mean(mask1 * torch.sum((flow_pred - flow) ** 2, 1) / 2.0)
         loss.backward()
 
