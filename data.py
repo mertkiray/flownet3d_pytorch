@@ -256,6 +256,7 @@ class SceneflowDataset(Dataset):
                     flow[idx[0:], :] = flow_idx_augmented
                 pos2 = pos1 + flow
                 color2 = color1
+                mask1 = np.ones_like(mask1)
                 return pos1, pos2, color1, color2, flow, mask1
         else:
             return pos1, pos2, color1, color2, flow, mask1
