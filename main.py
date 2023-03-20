@@ -86,7 +86,10 @@ def test_one_epoch(args, net, test_loader):
 
         batch_size = pc1.size(0)
         num_examples += batch_size
-        flow_pred = net(pc1, pc2, color1, color2).permute(0,2,1)
+        if args.use_color:
+            flow_pred = net(pc1, pc2, color1, color2).permute(0,2,1)
+        else:
+            flow_pred = net(pc1, pc2, None, None).permute(0,2,1)
         loss = torch.mean(mask1 * torch.sum((flow_pred - flow) * (flow_pred - flow), -1) / 2.0)
         epe_3d, acc_3d, acc_3d_2 = scene_flow_EPE_np(flow_pred.detach().cpu().numpy(), flow.detach().cpu().numpy(), mask1.detach().cpu().numpy())
         total_epe += epe_3d * batch_size
