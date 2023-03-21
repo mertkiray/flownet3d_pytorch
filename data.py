@@ -160,18 +160,19 @@ class ModelNet40(Dataset):
 
 
 class SceneflowDataset(Dataset):
-    def __init__(self, npoints=2048, root='data_preprocessing/data_processed_maxcut_35_both_mask_20k_2k', partition='train', flow_aug=False, use_color=False):
-        self.npoints = npoints
+    def __init__(self, args, partition='train'):
+        self.npoints = args.num_points
         self.partition = partition
-        self.root = root
+        self.root = args.dataset_path
         if self.partition=='train':
             self.datapath = glob.glob(os.path.join(self.root, 'TRAIN*.npz'))
         else:
             self.datapath = glob.glob(os.path.join(self.root, 'TEST*.npz'))
         self.cache = {}
         self.cache_size = 30000
-        self.flow_aug = flow_aug
-        self.use_color = use_color
+        self.flow_aug = args.flow_aug
+        self.use_color = args.use_color
+        self.flow_aug_type = args.flow_aug_type
 
         ###### deal with one bad datapoint with nan value
         self.datapath = [d for d in self.datapath if 'TRAIN_C_0140_left_0006-0' not in d]
@@ -234,30 +235,70 @@ class SceneflowDataset(Dataset):
                 pcd = o3d.geometry.PointCloud()
                 pcd.points = o3d.utility.Vector3dVector(pos1)
                 kdtree = o3d.geometry.KDTreeFlann(pcd)
-                # find the nearest neighbor of the 2 random points
-                # max flow min flow
-                max_flow_x = np.max(flow[:, 0])
-                min_flow_x = np.min(flow[:, 0])
-                max_flow_y = np.max(flow[:, 1])
-                min_flow_y = np.min(flow[:, 1])
-                max_flow_z = np.max(flow[:, 2])
-                min_flow_z = np.min(flow[:, 2])
-                for i in range(5):
-                    [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 0.5)
-                    idx = np.array(idx)
-                    # create random x, y, z flows between min and max
-                    flow_x = np.random.uniform(min_flow_x, max_flow_x, idx.shape[0])
-                    flow_y = np.random.uniform(min_flow_y, max_flow_y, idx.shape[0])
-                    flow_z = np.random.uniform(min_flow_z, max_flow_z, idx.shape[0])
-                    flow_idx_augmented = np.zeros((idx.shape[0], 3))
-                    flow_idx_augmented[:, 0] = flow_x
-                    flow_idx_augmented[:, 1] = flow_y
-                    flow_idx_augmented[:, 2] = flow_z
-                    flow[idx[0:], :] = flow_idx_augmented
-                pos2 = pos1 + flow
-                color2 = color1
-                mask1 = np.ones_like(mask1)
-                return pos1, pos2, color1, color2, flow, mask1
+
+                if self.flow_aug_type == 'random':
+                    # find the nearest neighbor of the 2 random points
+                    # max flow min flow
+                    max_flow_x = np.max(flow[:, 0])
+                    min_flow_x = np.min(flow[:, 0])
+                    max_flow_y = np.max(flow[:, 1])
+                    min_flow_y = np.min(flow[:, 1])
+                    max_flow_z = np.max(flow[:, 2])
+                    min_flow_z = np.min(flow[:, 2])
+                    for i in range(5):
+                        [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 0.5)
+                        idx = np.array(idx)
+                        # create random x, y, z flows between min and max
+                        flow_x = np.random.uniform(min_flow_x, max_flow_x, idx.shape[0])
+                        flow_y = np.random.uniform(min_flow_y, max_flow_y, idx.shape[0])
+                        flow_z = np.random.uniform(min_flow_z, max_flow_z, idx.shape[0])
+                        flow_idx_augmented = np.zeros((idx.shape[0], 3))
+                        flow_idx_augmented[:, 0] = flow_x
+                        flow_idx_augmented[:, 1] = flow_y
+                        flow_idx_augmented[:, 2] = flow_z
+                        flow[idx[0:], :] = flow_idx_augmented
+                    pos2 = pos1 + flow
+                    color2 = color1
+                    mask1 = np.ones_like(mask1)
+                    return pos1, pos2, color1, color2, flow, mask1
+
+                elif self.flow_aug_type == 'replace':
+                    for i in range(5):
+                        [_, idx, _] = kdtree.search_radius_vector_3d(pos1[idx_knn[i], :], 0.5)
+                        idx = np.array(idx)
+                        if idx.shape[0] == 0:
+                            continue
+                        random_index = random.randint(0, self.__len__() - 1)
+                        if random_index in self.cache:
+                            pos1_random, pos2_random, color1_random, color2_random, flow_random, mask1_random = self.cache[random_index]
+                        else:
+                            fn_random = self.datapath[random_index]
+                            with open(fn_random, 'rb') as fp_random:
+                                data_random = np.load(fp_random)
+                                pos1_random = data_random['points1'].astype('float32')
+                                pos2_random = data_random['points2'].astype('float32')
+                                color1_random = data_random['color1'].astype('float32')
+                                color2_random = data_random['color2'].astype('float32')
+                                flow_random = data_random['flow'].astype('float32')
+                                mask1_random = data_random['valid_mask1']
+
+                        if not self.use_color:
+                            color1_random = np.zeros_like(color1_random)
+                            color2_random = np.zeros_like(color2_random)
+
+                        pcd_random = o3d.geometry.PointCloud()
+                        pcd_random.points = o3d.utility.Vector3dVector(pos1_random)
+                        kdtree_random = o3d.geometry.KDTreeFlann(pcd_random)
+                        random_point = np.random.choice(pos1_random.shape[0], 1, replace=False)
+                        [_, idx_random, _] = kdtree_random.search_knn_vector_3d(pos1_random[random_point[0], :], idx.shape[0])
+                        idx_random = np.array(idx_random)
+                        pos1[idx[0:], :] = pos1_random[idx_random[0:], :]
+                        pos2[idx[0:], :] = pos2_random[idx_random[0:], :]
+                        color1[idx[0:], :] = color1_random[idx_random[0:], :]
+                        color2[idx[0:], :] = color2_random[idx_random[0:], :]
+                        flow[idx[0:], :] = flow_random[idx_random[0:], :]
+                        mask1[idx[0:]] = mask1_random[idx_random[0:]]
+                    return pos1, pos2, color1, color2, flow, mask1
         else:
             return pos1, pos2, color1, color2, flow, mask1
 

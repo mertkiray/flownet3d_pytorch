@@ -223,6 +223,9 @@ def main():
                         help='Pretrained model path')
     parser.add_argument('--flow_aug', type=bool, default=False, metavar='N',
                         help='Whether to use flow augmentation')
+    parser.add_argument('--flow_aug_type', type=str, default='random',
+                        choices=['random', 'replace'], metavar='N',
+                        help='flow aug type to use')
     parser.add_argument('--use_color', type=bool, default=False, metavar='N',
                         help='Whether to use color')
 
@@ -252,10 +255,10 @@ def main():
             batch_size=args.test_batch_size, shuffle=False, drop_last=False)
     elif args.dataset == 'SceneflowDataset':
         train_loader = DataLoader(
-            SceneflowDataset(npoints=args.num_points, root = args.dataset_path, partition='train', flow_aug=args.flow_aug, use_color=args.use_color),
+            SceneflowDataset(args, partition='train'),
             batch_size=args.batch_size, shuffle=True, drop_last=True)
         test_loader = DataLoader(
-            SceneflowDataset(npoints=args.num_points, root = args.dataset_path, partition='test', flow_aug=False, use_color=args.use_color),
+            SceneflowDataset(args, partition='test'),
             batch_size=args.test_batch_size, shuffle=False, drop_last=False)
     else:
         raise Exception("not implemented")
