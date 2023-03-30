@@ -232,7 +232,7 @@ class SceneflowDataset(Dataset):
             color1 = np.zeros_like(color1)
             color2 = np.zeros_like(color2)
 
-        if self.use_aug:
+        if self.use_aug and self.partition == 'train':
             pos1, flow = self.aug(pos1, flow)
 
         pos1_center = np.mean(pos1, 0)
