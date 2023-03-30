@@ -228,6 +228,8 @@ def main():
                         help='flow aug type to use')
     parser.add_argument('--use_color', type=bool, default=False, metavar='N',
                         help='Whether to use color')
+    parser.add_argument('--use_aug', type=bool, default=False, metavar='N',
+                        help='Whether to use augmentation')
 
     args = parser.parse_args()
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
