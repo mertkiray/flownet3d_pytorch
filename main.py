@@ -230,6 +230,8 @@ def main():
                         help='Whether to use color')
     parser.add_argument('--use_aug', type=bool, default=False, metavar='N',
                         help='Whether to use augmentation')
+    parser.add_argument('--num_workers', type=int, default=8, metavar='S',
+                        help='num workers')
 
     args = parser.parse_args()
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
@@ -258,10 +260,10 @@ def main():
     elif args.dataset == 'SceneflowDataset':
         train_loader = DataLoader(
             SceneflowDataset(args, partition='train'),
-            batch_size=args.batch_size, shuffle=True, drop_last=True)
+            batch_size=args.batch_size, shuffle=True, drop_last=True, num_workers=args.num_workers)
         test_loader = DataLoader(
             SceneflowDataset(args, partition='test'),
-            batch_size=args.test_batch_size, shuffle=False, drop_last=False)
+            batch_size=args.test_batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
     else:
         raise Exception("not implemented")
 
